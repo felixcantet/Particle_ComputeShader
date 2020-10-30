@@ -1,0 +1,81 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+uint rng_state;
+float deltaTime;
+float2 mousePosition;
+
+#include "Packages/jp.keijiro.noiseshader/Shader/SimplexNoise3D.hlsl"
+
+uint rand_lcg()
+{
+	// LCG values from Numerical Recipes
+	rng_state = 1664525 * rng_state + 1013904223;
+	return rng_state;
+}
+
+uint rand_xorshift()
+{
+	// Xorshift algorithm from George Marsaglia's paper
+	rng_state ^= (rng_state << 13);
+	rng_state ^= (rng_state >> 17);
+	rng_state ^= (rng_state << 5);
+	return rng_state;
+}
+float3 snoiseVec3(float3 x) {
+
+	float s = snoise(x);
+	float s1 = snoise(float3(x.y - 19.1, x.z + 33.4, x.x + 47.2));
+	float s2 = snoise(float3(x.z + 74.2, x.x - 124.5, x.y + 99.4));
+	float3 c = float3(s, s1, s2);
+	return c;
+}
+
+float3 curlNoise(float3 p) {
+
+	const float e = .1;
+	float3 dx = float3(e, 0.0, 0.0);
+	float3 dy = float3(0.0, e, 0.0);
+	float3 dz = float3(0.0, 0.0, e);
+
+	float3 p_x0 = snoiseVec3(p - dx);
+	float3 p_x1 = snoiseVec3(p + dx);
+	float3 p_y0 = snoiseVec3(p - dy);
+	float3 p_y1 = snoiseVec3(p + dy);
+	float3 p_z0 = snoiseVec3(p - dz);
+	float3 p_z1 = snoiseVec3(p + dz);
+
+	float x = p_y1.z - p_y0.z - p_z1.y + p_z0.y;
+	float y = p_z1.x - p_z0.x - p_x1.z + p_x0.z;
+	float z = p_x1.y - p_x0.y - p_y1.x + p_y0.x;
+
+	const float divisor = 1.0 / (2.0 * e);
+	return normalize(float3(x, y, z) * divisor);
+
+}
+
+struct Particle {
+	float3 position;
+	float3 velocity;
+	float life;
+};
+
+RWStructuredBuffer<Particle> buffer;
+uniform float particleSize;
+[numthreads(256, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+	float3 gravity = float3(0, -9.87, 0);
+	
+	buffer[id.x].velocity += gravity * deltaTime * 0.01;
+	buffer[id.x].position += buffer[id.x].velocity;
+	
+	if(buffer[id.x].position.y - particleSize < 0)
+	{
+		buffer[id.x].velocity = -buffer[id.x].velocity;
+	}
+
+	// buffer[id.x].position += pos * deltaTime;;
+
+
+}
