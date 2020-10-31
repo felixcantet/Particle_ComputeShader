@@ -43,8 +43,8 @@ public class AnimatedTexture : MonoBehaviour
     [Range(0.01f, 10f)]
     public float effectStrength;
 
-    public EffectType effect;
     public List<EffectType> kernelList;
+
     [System.Serializable]
     public struct Particle
     {
@@ -169,11 +169,12 @@ public class AnimatedTexture : MonoBehaviour
 
     private void Update()
     {
-        //        this.computeShader.SetFloat("_DeltaTime", Mathf.Sin(Time.time));
+        // Fill Shader Parameters
         this.computeShader.SetFloat("_DeltaTime", Time.deltaTime);
         this.computeShader.SetBool("_Clicked", Input.GetKey(KeyCode.Mouse0));
         this.computeShader.SetFloat("_MaxSpeed", 1000);
         computeShader.SetFloat("_EffectStrength", this.effectStrength);
+        
         Vector3 mousePosition;
         if (GetMousePos(out mousePosition))
         {
@@ -183,10 +184,12 @@ public class AnimatedTexture : MonoBehaviour
             this.computeShader.SetVector("_PrevMousePos", prevMousePos);
         }
         this.computeShader.SetFloat("_Radius", this.radius);
-        int kernel = GetKernel(this.effect);
-        //this.computeShader.Dispatch(kernel, (1024 * 1024) / 256, 1, 1);
+
         foreach (var item in kernelList)
+        {
+            // Execute each kernel on the list
             this.computeShader.Dispatch(GetKernel(item), (1024 * 1024) / 256, 1, 1);
+        }
     }
 
 }

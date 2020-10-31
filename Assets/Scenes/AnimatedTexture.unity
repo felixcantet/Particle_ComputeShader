@@ -154,9 +154,10 @@ MonoBehaviour:
   texture: {fileID: 2800000, guid: 45b942d56951bce4e941fa56dcdabeb2, type: 3}
   material: {fileID: 2100000, guid: cec8aef3eb45af444b7efea89d022385, type: 2}
   particles: []
-  radius: 0.86
-  effectStrength: 1.76
+  radius: 1
+  effectStrength: 1
   effect: 3
+  kernelList: 00000000
 --- !u!4 &203011141
 Transform:
   m_ObjectHideFlags: 0

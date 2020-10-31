@@ -6,9 +6,12 @@
 #pragma kernel SimulateVortex2
 #pragma kernel SimulateSin
 #pragma kernel SimulateInvert
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
+
+// Noise Library
 #include "Packages/jp.keijiro.noiseshader/Shader/SimplexNoise3D.hlsl"
+
+// Particle struct used for all effects
+// Probablement mieux d'utiliser un struct pour chaque kernel afin d'obtenir une struct minimal systématiquement
 struct Particle
 {
     float4 color;
@@ -23,7 +26,7 @@ struct Particle
     float4 initialColor;
 };
 
-Texture2D<float4> Texture;
+Texture2D<float4> Texture; 
 AppendStructuredBuffer<Particle> _Buffer;
 RWStructuredBuffer<Particle> _ReadBuffer;
 float _DeltaTime;
@@ -35,13 +38,16 @@ float _MaxSpeed;
 float _EffectStrength;
 shared float4 totalColor;
 shared uint count;
+
+// Remap the given float value from range min-max to new range min-max
 float remap(float value, float from1, float to1, float from2, float to2)
 {
     return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
 }
 
 
-
+// Initialise le buffer à partir de chaques pixels de la texture
+// numthread probablement pas optimal
 [numthreads(8, 8, 1)]
 void FillBuffer(uint3 id : SV_DispatchThreadID)
 {
@@ -97,6 +103,8 @@ float3 curlNoise(float3 p)
 
 }
 
+// Return the minimal distance from the segment defined by mouse position and previous frame mouse position
+// output minimal distance point on the line in "position" argument
 float ComputeDistanceToSegment(float3 pos, inout float3 position)
 {
     float3 a = _PrevMousePos;
@@ -124,9 +132,6 @@ float ComputeDistanceToSegment(float3 pos, inout float3 position)
 [numthreads(256, 1, 1)]
 void SimulateGrab(uint id : SV_DispatchThreadID)
 {
-    
-    //float3 noise = curlNoise(_ReadBuffer[id].initialPosition * remap(sin(_DeltaTime), -1, 1, -2, 2));
-    //_ReadBuffer[id].position.z = _ReadBuffer[id].initialPosition.z + remap(sin(_ReadBuffer[id].initialPosition.y * remap(sin(_DeltaTime), -1, 1, -2, 2)), -1, 1, -2, 2); //noise * 0.1f;
     Particle p = _ReadBuffer[id];
     if (_Clicked == true)
     {
@@ -137,7 +142,6 @@ void SimulateGrab(uint id : SV_DispatchThreadID)
             float3 vel = _MousePos - _PrevMousePos;
             p.velocity += vel * remap(dist, 0, _Radius, 1, 0);
             
-            //p.velocity = clamp(p.velocity, 0.0, _MaxSpeed);
         }
         
     }
@@ -153,9 +157,6 @@ void SimulateGrab(uint id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void SimulateVortex(uint id : SV_DispatchThreadID)
 {
-    
-    //float3 noise = curlNoise(_ReadBuffer[id].initialPosition * remap(sin(_DeltaTime), -1, 1, -2, 2));
-    //_ReadBuffer[id].position.z = _ReadBuffer[id].initialPosition.z + remap(sin(_ReadBuffer[id].initialPosition.y * remap(sin(_DeltaTime), -1, 1, -2, 2)), -1, 1, -2, 2); //noise * 0.1f;
     Particle p = _ReadBuffer[id];
     if (_Clicked == true)
     {
@@ -165,7 +166,6 @@ void SimulateVortex(uint id : SV_DispatchThreadID)
         {
             float3 vel = normalize(p.position - position);
             p.velocity += vel * remap(dist, 0, _Radius, 1, 0) * _EffectStrength;
-            //p.velocity = clamp(p.velocity, 0.0, _MaxSpeed);
         }
         
     }
@@ -181,9 +181,6 @@ void SimulateVortex(uint id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void SimulateHeight(uint id : SV_DispatchThreadID)
 {
-    
-    //float3 noise = curlNoise(_ReadBuffer[id].initialPosition * remap(sin(_DeltaTime), -1, 1, -2, 2));
-    //_ReadBuffer[id].position.z = _ReadBuffer[id].initialPosition.z + remap(sin(_ReadBuffer[id].initialPosition.y * remap(sin(_DeltaTime), -1, 1, -2, 2)), -1, 1, -2, 2); //noise * 0.1f;
     Particle p = _ReadBuffer[id];
     if (_Clicked == true)
     {
@@ -192,9 +189,6 @@ void SimulateHeight(uint id : SV_DispatchThreadID)
         if (dist < _Radius)
         {
             p.position.z -= remap(dist, 0, _Radius, 1, 0) * _EffectStrength;
-           
-            //remap(dist, 0, _Radius, 1, 0) * _EffectStrength;
-            //p.velocity = clamp(p.velocity, 0.0, _MaxSpeed);
         }
         
     }
@@ -211,8 +205,6 @@ void SimulateHeight(uint id : SV_DispatchThreadID)
 void SimulateVortex2(uint id : SV_DispatchThreadID)
 {
     
-    //float3 noise = curlNoise(_ReadBuffer[id].initialPosition * remap(sin(_DeltaTime), -1, 1, -2, 2));
-    //_ReadBuffer[id].position.z = _ReadBuffer[id].initialPosition.z + remap(sin(_ReadBuffer[id].initialPosition.y * remap(sin(_DeltaTime), -1, 1, -2, 2)), -1, 1, -2, 2); //noise * 0.1f;
     Particle p = _ReadBuffer[id];
     if (_Clicked == true)
     {
@@ -221,8 +213,7 @@ void SimulateVortex2(uint id : SV_DispatchThreadID)
         if (dist < _Radius)
         {
             float fallof = remap(dist, 0, _Radius, 0, 1);
-            p.targetPosition = position - ((position - p.position) * fallof * _EffectStrength); //
-            //p.initialPosition + (normalize(position - p.position));
+            p.targetPosition = position - ((position - p.position) * fallof * _EffectStrength);
             p.interpolationGrow = true;
             p.interpolationFactor = 0;
             p.startMovePosition = p.position;
@@ -248,7 +239,6 @@ void SimulateVortex2(uint id : SV_DispatchThreadID)
             p.targetPosition = p.initialPosition;
             p.move = false;
         }
-        //p.color = float4(p.interpolationFactor, 0, 0, 1);
         if (p.interpolationGrow)
         {
             p.position = lerp(p.startMovePosition, p.targetPosition, p.interpolationFactor);
@@ -266,9 +256,6 @@ void SimulateVortex2(uint id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void SimulateSin(uint id : SV_DispatchThreadID)
 {
-    
-    //float3 noise = curlNoise(_ReadBuffer[id].initialPosition * remap(sin(_DeltaTime), -1, 1, -2, 2));
-    //_ReadBuffer[id].position.z = _ReadBuffer[id].initialPosition.z + remap(sin(_ReadBuffer[id].initialPosition.y * remap(sin(_DeltaTime), -1, 1, -2, 2)), -1, 1, -2, 2); //noise * 0.1f;
     Particle p = _ReadBuffer[id];
     
     float dist = distance(p.position, _MousePos);
@@ -286,15 +273,12 @@ void SimulateSin(uint id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void SimulateInvert(uint id : SV_DispatchThreadID)
 {
-    
-    //float3 noise = curlNoise(_ReadBuffer[id].initialPosition * remap(sin(_DeltaTime), -1, 1, -2, 2));
-    //_ReadBuffer[id].position.z = _ReadBuffer[id].initialPosition.z + remap(sin(_ReadBuffer[id].initialPosition.y * remap(sin(_DeltaTime), -1, 1, -2, 2)), -1, 1, -2, 2); //noise * 0.1f;
     Particle p = _ReadBuffer[id];
     
     float dist = distance(p.position, _MousePos);
     if (dist < _Radius)
     {
-        p.color = 1 - p.initialColor;
+        p.color = float4(1 - p.initialColor.rgb, 1);
     }
     else
     {
@@ -303,20 +287,3 @@ void SimulateInvert(uint id : SV_DispatchThreadID)
     _ReadBuffer[id] = p;
 }
 
-[numthreads(256, 1, 1)]
-void SimulateColorBlur(uint id : SV_DispatchThreadID)
-{
-    Particle p = _ReadBuffer[id];
-    if (distance(p.position, _MousePos) < _Radius)
-    {
-        InterlockedAdd(totalColor, p.color);
-        InterlockedAdd(count, 1);
-        AllMemoryBarrierWithGroupSync();
-        float4 col = totalColor;
-        col /= count;
-        p.color = lerp(p.color, col, _DeltaTime);
-    }
-    _ReadBuffer[id] = p;
-    
-
-}

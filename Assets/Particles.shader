@@ -66,16 +66,14 @@ Shader "Unlit/Particles"
             // Put this in a Constant Buffer
             uniform float _Size;
             uniform sampler2D _MainTex;
+
             GS_INPUT vert (uint vertex_id : SV_VertexID, uint instance_ID : SV_InstanceID)
             {
                 GS_INPUT o;
-                //o.color = float4(1.0, 0.0, 0.0, 1.0);
-                //o.position = UnityObjectToClipPos(float4(_Buffer[instance_ID].position, 1.0f));
-                //o.position = UnityObjectToWorld(float4(_Buffer[instance_ID].position, 1.0));
                 o.position = mul(unity_ObjectToWorld, float4(_Buffer[instance_ID].position, 1.0));
                 float life = _Buffer[instance_ID].life;
                 float lerpVal = life * 0.25f;
-                o.color = _Color;// fixed4(1.0f - lerpVal + 0.1, lerpVal + 0.1, 1.0f, lerpVal);
+                o.color = fixed4(1.0f - lerpVal + 0.1, lerpVal + 0.1, 1.0f, lerpVal);
                 
                 o.color.a = lerp(0, 1, _Buffer[instance_ID].life / 1.5);
                 return o;
@@ -91,17 +89,12 @@ Shader "Unlit/Particles"
                 float3 right = cross(up, look);
                 float halfS = 0.5f - _Size;
 
+                // Create Camera Billboard
                 float4 v[4];
                 v[0] = float4(p[0].position + halfS * right - halfS * up, 1.0f);
                 v[1] = float4(p[0].position + halfS * right + halfS * up, 1.0f);
                 v[2] = float4(p[0].position - halfS * right - halfS * up, 1.0f);
                 v[3] = float4(p[0].position - halfS * right + halfS * up, 1.0f);
-                /*v[0] = float4(p[0].position + float3(_halfS, _halfS, 0 ), 1.0);
-                v[1] = float4(p[0].position + float3(-_halfS, _halfS, 0), 1.0);
-                v[2] = float4(p[0].position + float3(-_halfS, -_halfS, 0), 1.0);
-                v[3] = float4(p[0].position + float3(_halfS, -_halfS, 0), 1.0);*/
-
-                //float4x4 vp = UnityObjectToClipPos(unity_WorldToObject);
                 v2f o;
 
                 o.position = UnityObjectToClipPos(v[0]);

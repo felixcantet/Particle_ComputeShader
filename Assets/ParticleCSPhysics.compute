@@ -75,7 +75,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		buffer[id.x].velocity = -buffer[id.x].velocity;
 	}
 
-	// buffer[id.x].position += pos * deltaTime;;
 
 
 }
